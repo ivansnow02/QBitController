@@ -12,7 +12,6 @@ struct TorrentInfo {
 }
 
 async fn pause_torrents(qbittorrent_url: &str,cookie: &str, hashes: &str, client: &Client) -> Result<(), Box<dyn Error>> {
-    // 4. 暂停匹配的 torrents
     let pause_url = format!("{}/api/v2/torrents/pause", qbittorrent_url);
     client
         .post(pause_url)
@@ -26,7 +25,6 @@ async fn pause_torrents(qbittorrent_url: &str,cookie: &str, hashes: &str, client
 }
 
 async fn continue_torrents(qbittorrent_url: &str, cookie: &str, hashes: &str, client: &Client) -> Result<(), Box<dyn Error>> {
-    // 4. 继续匹配的 torrents
     let continue_url = format!("{}/api/v2/torrents/resume", qbittorrent_url);
     client
         .post(continue_url)
@@ -40,12 +38,6 @@ async fn continue_torrents(qbittorrent_url: &str, cookie: &str, hashes: &str, cl
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // let qbittorrent_url = "http://localhost:8089";
-    // let username = "admin";
-    // let password = "adminadmin";
-    // let target_folder = "/Users/ivansnow02/Downloads/Bangumi";
-
-    // let args: Vec<String> = env::args().skip(1).collect();
 
         let matches = Command::new("qBittorrent Controller")
         .version("1.0")
