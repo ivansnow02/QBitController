@@ -1,58 +1,8 @@
-use reqwest::header::{self, COOKIE};
-use reqwest::Client;
-use serde::Deserialize;
 use std::error::Error;
 extern crate clap;
 use clap::{Arg, Command};
+use qbit_controller::{Config, send_action, login};
 
-#[derive(Deserialize, Debug)]
-struct TorrentInfo {
-    hash: String,
-    save_path: String,
-    name: String,
-}
-
-async fn send_action(
-    action: &str,
-    qbittorrent_url: &str,
-    cookie: &str,
-    client: &Client,
-    torrents_res: Vec<TorrentInfo>,
-    target_folder: &str,
-) -> Result<(), Box<dyn Error>> {
-    let mut torrent_hashes = Vec::new();
-
-    for torrent in &torrents_res {
-        if torrent.save_path == target_folder {
-            torrent_hashes.push(torrent.hash.clone());
-        }
-    }
-
-    if torrent_hashes.is_empty() {
-        println!("no torrents found in the specified folder.");
-        return Ok(());
-    }
-
-    let hashes = torrent_hashes.join("|");
-
-    let url = format!("{}/api/v2/torrents/{}", qbittorrent_url, action);
-    client
-        .post(url)
-        .header(COOKIE, cookie)
-        .form(&[("hashes", hashes)])
-        .send()
-        .await?;
-
-    // print the name of the torrents that were paused or resumed
-
-    for torrent in torrents_res {
-        if torrent_hashes.contains(&torrent.hash) {
-            println!("{}: {}", action, torrent.name);
-        }
-    }
-
-    Ok(())
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -116,34 +66,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .map(|s| s.as_str())
         .expect("action cannot be empty");
 
-    let client = Client::new();
+    let mut config = Config::new(qbittorrent_url.to_string(), username.to_string(), password.to_string(), target_folder.to_string(), action.to_string());
 
-    let login_url = format!("{}/api/v2/auth/login", qbittorrent_url);
-    let res = client
-        .post(&login_url)
-        .form(&[("username", username), ("password", password)])
-        .send()
-        .await?;
+    let torrents_res = login(&mut config).await?;
 
-    let headers = res.headers();
-
-    let cookies = headers.get(header::SET_COOKIE).ok_or("No cookies")?;
-    let cookie = cookies.to_str()?.to_string();
-
-    // println!("Cookie: {}", cookie);
-
-    let torrents_url = format!("{}/api/v2/torrents/info", qbittorrent_url);
-    let torrents_res = client
-        .get(&torrents_url)
-        .header(COOKIE, &cookie)
-        .send()
-        .await?
-        .json::<Vec<TorrentInfo>>()
-        .await?;
-
-    // println!("{:?}", torrents_res);
-
-    send_action(action, qbittorrent_url, &cookie, &client, torrents_res, target_folder).await?;
+    send_action(&config, torrents_res).await?;
 
     Ok(())
 }
